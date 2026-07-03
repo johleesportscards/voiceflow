@@ -1,0 +1,35 @@
+# VoiceFlow settings — edit and restart the app (tray menu > Quit, relaunch)
+
+# Global dictation key. Names from the `keyboard` library, e.g. "right ctrl",
+# "f9", "caps lock", "right alt".
+hotkey: right ctrl
+
+# Whisper model: large-v3 (best, multilingual), distil-large-v3 (faster,
+# English-biased), medium, small ...
+model: large-v3
+
+# auto = try CUDA, fall back to CPU int8. Or force: cuda | cpu
+device: auto
+
+# auto = detect per utterance, or fix a language code: en, zh, es ...
+language: auto
+
+# Cleanup backend for the transcript:
+#   auto     = try claude, then ollama, then lmstudio, then raw
+#   claude   = Claude Haiku (needs ANTHROPIC_API_KEY env var)
+#   ollama   = local model via Ollama (http://localhost:11434)
+#   lmstudio = local model via LM Studio's server (http://localhost:1234)
+#   raw      = no cleanup, inject transcript as-is
+cleanup: auto
+ollama_model: qwen3:8b
+ollama_url: http://localhost:11434
+# empty = use the first chat model LM Studio lists; small models clean fastest
+lmstudio_model: google/gemma-4-e4b
+lmstudio_url: http://localhost:1234
+
+# How text is inserted at the cursor: paste (clipboard + Ctrl+V, recommended)
+# or type (simulated keystrokes, for apps that block paste)
+inject: paste
+
+# Show a small always-on-top pill while recording
+overlay: true
