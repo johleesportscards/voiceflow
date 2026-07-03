@@ -2,7 +2,7 @@
 
 # Global dictation key. Names from the `keyboard` library, e.g. "right ctrl",
 # "f9", "caps lock", "right alt".
-hotkey: right ctrl
+hotkey: caps lock
 
 # Whisper model: large-v3 (best, multilingual), distil-large-v3 (faster,
 # English-biased), medium, small ...

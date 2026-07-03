@@ -15,14 +15,18 @@ uv run voiceflow
 First run downloads the Whisper model (~3 GB). A green mic icon appears in the
 system tray when ready.
 
-## Hotkeys (default key: right Ctrl, change in config.yaml)
+## Hotkeys (default key: Caps Lock, change in config.yaml)
 
 | Action | Result |
 |---|---|
 | Hold + speak + release | Transcribe and paste at cursor |
+| Quick single tap | Normal caps-lock toggle (passed through, ~0.5 s delay) |
 | Double-tap | Lock recording on (hands-free) |
 | Single tap while locked | Stop and transcribe |
 | Esc while recording | Cancel, discard audio |
+
+With the Caps Lock hotkey, holding the key to talk never flips caps state —
+only a deliberate lone tap does.
 
 ## Cleanup modes (tray menu > Cleanup, or `cleanup:` in config.yaml)
 
