@@ -44,10 +44,13 @@ only a deliberate lone tap does.
 Edit `config.yaml` (hotkey, model size, language, cleanup backend, paste vs
 type injection, overlay). Restart the app to apply.
 
-## Autostart (optional)
+## Autostart (installed)
 
-Create a shortcut to `uv run voiceflow` (working dir = this folder) in
-`shell:startup`.
+VoiceFlow starts at logon via `shell:startup` → `VoiceFlow.vbs`
+(windowless, runs `.venv\Scripts\pythonw.exe -m voiceflow`). Delete that
+file to disable. `Start VoiceFlow.cmd` in this folder launches it manually
+with a visible console for debugging; a second launch exits immediately
+(single-instance mutex). Runtime logs: `voiceflow.log` here.
 
 ## Known limitations
 

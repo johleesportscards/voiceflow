@@ -73,8 +73,36 @@ class App:
         self.tray.run()  # blocks until Quit
 
 
+def _already_running() -> bool:
+    """Single-instance guard: two instances mean doubled keyboard hooks and
+    double-pasted text. Uses a named Windows mutex held for process lifetime."""
+    import ctypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    global _instance_mutex
+    _instance_mutex = kernel32.CreateMutexW(None, False, "voiceflow-single-instance")
+    return ctypes.get_last_error() == 183  # ERROR_ALREADY_EXISTS
+
+
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    import sys
+    from pathlib import Path
+
+    # Always log to a file: under the startup launcher (pythonw) there is no
+    # usable console, and stderr detection is unreliable behind cmd wrappers.
+    log_file = Path(__file__).resolve().parent.parent / "voiceflow.log"
+    handlers: list[logging.Handler] = [logging.FileHandler(log_file, encoding="utf-8")]
+    if sys.stderr is not None:
+        handlers.append(logging.StreamHandler())
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        handlers=handlers,
+    )
+
+    if _already_running():
+        log.info("VoiceFlow is already running — exiting this instance.")
+        return
     App().run()
 
 
