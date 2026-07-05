@@ -61,13 +61,13 @@ class Transcriber:
 
     def transcribe(self, audio: np.ndarray) -> str:
         """Final-quality pass (beam search)."""
-        return self._run(audio, beam_size=5)
+        return self._run(audio, beam_size=5, condition=True)
 
     def transcribe_partial(self, audio: np.ndarray) -> str:
         """Fast greedy pass for the live preview while still recording."""
-        return self._run(audio, beam_size=1)
+        return self._run(audio, beam_size=1, condition=False)
 
-    def _run(self, audio: np.ndarray, beam_size: int) -> str:
+    def _run(self, audio: np.ndarray, beam_size: int, condition: bool) -> str:
         if audio.size < 1600:  # <0.1 s, nothing to do
             return ""
         with self._infer_lock:
@@ -76,5 +76,6 @@ class Transcriber:
                 language=self.language,
                 vad_filter=True,
                 beam_size=beam_size,
+                condition_on_previous_text=condition,
             )
             return " ".join(seg.text.strip() for seg in segments).strip()

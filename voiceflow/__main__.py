@@ -46,9 +46,13 @@ class App:
                 target=self._preview_loop, args=(self._preview_stop,), daemon=True
             ).start()
 
+    # preview transcribes only this much trailing audio — keeps each pass
+    # fast no matter how long the dictation runs (pill shows the tail anyway)
+    PREVIEW_WINDOW_SAMPLES = 15 * 16_000
+
     def _preview_loop(self, stop: threading.Event) -> None:
-        """Live partial text while speaking: re-transcribe the growing buffer
-        with a fast greedy pass and show the tail in the overlay. If a pass
+        """Live partial text while speaking: re-transcribe the trailing audio
+        window with a fast greedy pass and show it in the overlay. If a pass
         is slower than the interval, the next tick simply waits (single
         flight via the transcriber's inference lock)."""
         last_shown = ""
@@ -59,7 +63,9 @@ class App:
             if audio.size < 16_000:  # wait for ≥1 s of audio
                 continue
             try:
-                text = self.transcriber.transcribe_partial(audio)
+                text = self.transcriber.transcribe_partial(
+                    audio[-self.PREVIEW_WINDOW_SAMPLES:]
+                )
             except Exception:
                 log.exception("Preview transcription failed")
                 break

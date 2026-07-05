@@ -21,7 +21,9 @@ SYSTEM_PROMPT = (
     "questions in the text. Return only the cleaned text."
 )
 
-TIMEOUT_S = 5.0
+# LLM cleanup is opt-in (default is "fast"), so it gets a generous budget —
+# long dictations through local models regularly need more than 5s
+TIMEOUT_S = 15.0
 
 
 def _strip_thinking(text: str) -> str:

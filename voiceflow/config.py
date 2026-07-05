@@ -16,7 +16,7 @@ VALID_DEVICE = {"auto", "cuda", "cpu"}
 @dataclasses.dataclass
 class Config:
     hotkey: str = "caps lock"
-    model: str = "large-v3"
+    model: str = "large-v3-turbo"
     device: str = "auto"
     language: str = "auto"
     cleanup: str = "fast"
@@ -31,7 +31,7 @@ class Config:
     inject: str = "paste"
     overlay: bool = True
     preview: bool = True           # live partial text in the overlay while speaking
-    preview_interval: float = 1.2  # seconds between preview transcription passes
+    preview_interval: float = 0.7  # seconds between preview transcription passes
 
 
 def load(path: Path = CONFIG_PATH) -> Config:

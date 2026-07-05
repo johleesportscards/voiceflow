@@ -41,9 +41,22 @@ class Overlay:
         status = tk.Label(frame, text="", font=("Segoe UI", 11, "bold"),
                           fg="white", bg="#333333", padx=14, pady=6)
         status.pack(side="left")
+        # fixed 60-char x 2-line box: the pill never resizes between preview
+        # updates, so live text doesn't flicker or make the window jump
         preview = tk.Label(frame, text="", font=("Segoe UI", 11),
                            fg="#e8e8e8", bg="#333333", padx=0, pady=6,
-                           wraplength=560, justify="left")
+                           width=60, height=2, wraplength=520,
+                           justify="left", anchor="w")
+        visible = {"shown": False, "with_text": False}
+
+        def place_and_show() -> None:
+            root.update_idletasks()
+            w = root.winfo_reqwidth()
+            x = (root.winfo_screenwidth() - w) // 2
+            y = root.winfo_screenheight() - 130
+            root.geometry(f"+{x}+{y}")
+            root.deiconify()
+            visible["shown"] = True
 
         def poll() -> None:
             try:
@@ -51,6 +64,10 @@ class Overlay:
                     item = self._q.get_nowait()
                     if item is None:
                         root.withdraw()
+                        visible["shown"] = False
+                        visible["with_text"] = False
+                        preview.config(text="")
+                        preview.pack_forget()
                         continue
                     state, text = item
                     status.config(text=LABELS.get(state, state),
@@ -60,16 +77,12 @@ class Overlay:
                         if len(text) > MAX_PREVIEW_CHARS:
                             tail = "…" + tail
                         preview.config(text=tail)
-                        preview.pack(side="left", padx=(0, 14))
-                    else:
-                        preview.pack_forget()
-                    # bottom-center of the primary screen
-                    root.update_idletasks()
-                    w = root.winfo_reqwidth()
-                    x = (root.winfo_screenwidth() - w) // 2
-                    y = root.winfo_screenheight() - 110
-                    root.geometry(f"+{x}+{y}")
-                    root.deiconify()
+                        if not visible["with_text"]:
+                            preview.pack(side="left", padx=(0, 14))
+                            visible["with_text"] = True
+                            visible["shown"] = False  # width changed: re-center once
+                    if not visible["shown"]:
+                        place_and_show()
             except queue.Empty:
                 pass
             root.after(50, poll)

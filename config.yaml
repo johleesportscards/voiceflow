@@ -4,9 +4,9 @@
 # "f9", "caps lock", "right alt".
 hotkey: caps lock
 
-# Whisper model: large-v3 (best, multilingual), distil-large-v3 (faster,
-# English-biased), medium, small ...
-model: large-v3
+# Whisper model: large-v3-turbo (fast, multilingual — recommended),
+# large-v3 (highest accuracy, ~6x slower), distil-large-v3 (English-biased)
+model: large-v3-turbo
 
 # auto = try CUDA, fall back to CPU int8. Or force: cuda | cpu
 device: auto
@@ -28,8 +28,9 @@ cleanup: fast
 filler_words: [um, uh, uhm, erm]
 
 # Used by "fast" cleanup: spoken form -> written form (case-insensitive).
-# Example: { "john lee sports cards": "JohLee Sports Cards" }
-dictionary: {}
+dictionary:
+  jolie sports cards: JohLee Sports Cards
+  john lee sports cards: JohLee Sports Cards
 ollama_model: qwen3:8b
 ollama_url: http://localhost:11434
 # empty = use the first chat model LM Studio lists; small models clean fastest
@@ -45,4 +46,4 @@ overlay: true
 
 # Live partial transcript in the overlay while you speak (requires overlay)
 preview: true
-preview_interval: 1.2
+preview_interval: 0.7
