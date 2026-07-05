@@ -45,6 +45,9 @@ class Overlay:
         root = tk.Tk()
         root.overrideredirect(True)
         root.attributes("-topmost", True)
+        # dark root: pixels exposed during a grow paint dark, not the
+        # default light gray — kills the resize flash
+        root.configure(bg="#333333")
         root.withdraw()
         frame = tk.Frame(root, bg="#333333")
         frame.pack()
@@ -70,6 +73,8 @@ class Overlay:
                 n = n[0]
             return (n or 0) + 1
 
+        last_rows = {"n": 0}
+
         def set_preview_text(text: str) -> None:
             preview.configure(state="normal")
             preview.delete("1.0", "end")
@@ -77,7 +82,11 @@ class Overlay:
             root.update_idletasks()
             while display_rows() > MAX_ROWS:
                 preview.delete("1.0", "1.0+1displaylines")
-            preview.configure(height=display_rows(), state="disabled")
+            rows = display_rows()
+            if rows != last_rows["n"]:  # touching height when unchanged still
+                last_rows["n"] = rows   # triggers relayout → needless flicker
+                preview.configure(height=rows)
+            preview.configure(state="disabled")
 
         def place(force: bool = False) -> None:
             """(Re)position so the pill's BOTTOM edge stays fixed; growth
@@ -96,6 +105,9 @@ class Overlay:
             state_track["w"] = w
             state_track["h"] = h
             if not state_track["visible"]:
+                # let the new geometry apply before revealing, or the first
+                # frame shows the window at its previous session's size
+                root.update_idletasks()
                 root.deiconify()
                 state_track["visible"] = True
 
@@ -105,10 +117,12 @@ class Overlay:
                     item = self._q.get_nowait()
                     if item is None:
                         root.withdraw()
+                        root.geometry("1x1+-3000+-3000")  # park tiny off-screen
                         state_track["visible"] = False
                         state_track["with_text"] = False
                         state_track["w"] = 0
                         state_track["h"] = 0
+                        last_rows["n"] = 0
                         preview.configure(state="normal")
                         preview.delete("1.0", "end")
                         preview.configure(height=1, state="disabled")
