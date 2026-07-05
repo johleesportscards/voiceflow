@@ -62,10 +62,13 @@ class Overlay:
         state_track = {"visible": False, "with_text": False, "w": 0, "h": 0}
 
         def display_rows() -> int:
+            # Tk counts display-line BOUNDARIES between the indices, so text
+            # occupying N rows returns N-1 — hence the +1. Without it the
+            # live partial row is clipped until it fills completely.
             n = preview.count("1.0", "end-1c", "displaylines")
             if isinstance(n, tuple):
                 n = n[0]
-            return max(1, n or 1)
+            return (n or 0) + 1
 
         def set_preview_text(text: str) -> None:
             preview.configure(state="normal")
