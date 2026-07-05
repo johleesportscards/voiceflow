@@ -25,7 +25,7 @@ cleanup: fast
 
 # Used by "fast" cleanup. Words removed anywhere they appear (case-insensitive,
 # whole-word). Keep this list conservative — "like" would eat real sentences.
-filler_words: [um, uh, uhm, erm]
+filler_words: [um, uh, uhm, erm, huh]
 
 # Used by "fast" cleanup: spoken form -> written form (case-insensitive).
 dictionary:

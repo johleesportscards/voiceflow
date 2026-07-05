@@ -48,11 +48,18 @@ class Overlay:
         status.pack(side="left", anchor="s")
         # fixed width so x never shifts; height is free — rows accumulate and
         # the window is re-anchored by its bottom edge whenever size changes.
-        # wraplength is kept well under the label's pixel width so the last
-        # word on a row wraps instead of clipping at the edge
-        preview = tk.Label(frame, text="", font=("Segoe UI", 11),
+        # wraplength is derived from the measured font so wrap point and box
+        # width stay matched at any Windows display scaling (a hardcoded
+        # pixel wraplength leaves dead space on the right on scaled displays)
+        import tkinter.font as tkfont
+
+        CHARS_PER_ROW = 62
+        preview_font = tkfont.Font(root=root, family="Segoe UI", size=11)
+        char_px = preview_font.measure("0")
+        preview = tk.Label(frame, text="", font=preview_font,
                            fg="#e8e8e8", bg="#333333", padx=0, pady=6,
-                           width=62, wraplength=480,
+                           width=CHARS_PER_ROW,
+                           wraplength=char_px * (CHARS_PER_ROW - 1),
                            justify="left", anchor="sw")
         state_track = {"visible": False, "with_text": False, "w": 0, "h": 0}
 

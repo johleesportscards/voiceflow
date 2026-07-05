@@ -21,7 +21,7 @@ class Config:
     language: str = "auto"
     cleanup: str = "fast"
     filler_words: list = dataclasses.field(
-        default_factory=lambda: ["um", "uh", "uhm", "erm"]
+        default_factory=lambda: ["um", "uh", "uhm", "erm", "huh"]
     )
     dictionary: dict = dataclasses.field(default_factory=dict)
     ollama_model: str = "qwen3:8b"
