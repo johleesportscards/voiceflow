@@ -135,8 +135,47 @@ class RawCleanup:
         return text
 
 
+class FastCleanup:
+    """Instant string-level cleanup: filler-word removal + custom dictionary.
+
+    Runs in microseconds, so dictation latency is just the transcription
+    itself — no LLM in the hot path unless the user opts in.
+    """
+
+    name = "fast"
+
+    def __init__(self, filler_words: list[str], dictionary: dict[str, str]) -> None:
+        fillers = [re.escape(w.strip()) for w in filler_words if w and w.strip()]
+        self._filler_re = (
+            re.compile(r"\b(?:" + "|".join(fillers) + r")\b[,.]?\s*", re.IGNORECASE)
+            if fillers
+            else None
+        )
+        self._dictionary = [
+            (re.compile(rf"\b{re.escape(k)}\b", re.IGNORECASE), v)
+            for k, v in (dictionary or {}).items()
+        ]
+
+    def clean(self, text: str) -> str:
+        cleaned = text
+        if self._filler_re:
+            cleaned = self._filler_re.sub("", cleaned)
+            cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+        for pattern, replacement in self._dictionary:
+            cleaned = pattern.sub(replacement, cleaned)
+        if not cleaned:
+            return text
+        # a removed leading filler shouldn't leave the sentence lowercase
+        if text[:1].isupper() and cleaned[:1].islower():
+            cleaned = cleaned[0].upper() + cleaned[1:]
+        return cleaned
+
+
 def build_chain(mode: str, cfg) -> list:
     """Return cleanup backends in fallback order for the configured mode."""
+    if mode == "fast":
+        log.info("Cleanup chain: fast (regex, no LLM)")
+        return [FastCleanup(cfg.filler_words, cfg.dictionary)]
     chain: list = []
     want = ("claude", "ollama", "lmstudio") if mode == "auto" else (mode,)
     if "claude" in want:

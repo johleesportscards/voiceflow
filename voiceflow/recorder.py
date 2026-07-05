@@ -35,6 +35,15 @@ class Recorder:
         with self._lock:
             self._chunks.append(indata[:, 0].copy())
 
+    def snapshot(self) -> np.ndarray:
+        """Copy of everything recorded so far, without stopping the stream.
+        Used by the live-preview loop while recording continues."""
+        with self._lock:
+            chunks = list(self._chunks)
+        if not chunks:
+            return np.zeros(0, dtype=np.float32)
+        return np.concatenate(chunks)
+
     def stop(self) -> np.ndarray:
         """Stop capture and return the recorded audio as a 1-D float32 array."""
         if self._stream is None:

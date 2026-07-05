@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import threading
 from pathlib import Path
 
 import numpy as np
@@ -39,6 +40,9 @@ class Transcriber:
         _add_nvidia_dll_dirs()
         self.language = None if language == "auto" else language
         self.device = device
+        # ctranslate2 models aren't safe for concurrent transcribe calls;
+        # serializes the preview loop against the final pass
+        self._infer_lock = threading.Lock()
 
         attempts = [("cuda", "float16"), ("cpu", "int8")] if device == "auto" else [
             (device, "float16" if device == "cuda" else "int8")
@@ -56,12 +60,21 @@ class Transcriber:
         raise RuntimeError(f"Could not load Whisper model {model_name}") from last_err
 
     def transcribe(self, audio: np.ndarray) -> str:
+        """Final-quality pass (beam search)."""
+        return self._run(audio, beam_size=5)
+
+    def transcribe_partial(self, audio: np.ndarray) -> str:
+        """Fast greedy pass for the live preview while still recording."""
+        return self._run(audio, beam_size=1)
+
+    def _run(self, audio: np.ndarray, beam_size: int) -> str:
         if audio.size < 1600:  # <0.1 s, nothing to do
             return ""
-        segments, _info = self.model.transcribe(
-            audio,
-            language=self.language,
-            vad_filter=True,
-            beam_size=5,
-        )
-        return " ".join(seg.text.strip() for seg in segments).strip()
+        with self._infer_lock:
+            segments, _info = self.model.transcribe(
+                audio,
+                language=self.language,
+                vad_filter=True,
+                beam_size=beam_size,
+            )
+            return " ".join(seg.text.strip() for seg in segments).strip()

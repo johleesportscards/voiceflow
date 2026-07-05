@@ -8,24 +8,30 @@ import yaml
 
 CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.yaml"
 
-VALID_CLEANUP = {"auto", "claude", "ollama", "lmstudio", "raw"}
+VALID_CLEANUP = {"fast", "auto", "claude", "ollama", "lmstudio", "raw"}
 VALID_INJECT = {"paste", "type"}
 VALID_DEVICE = {"auto", "cuda", "cpu"}
 
 
 @dataclasses.dataclass
 class Config:
-    hotkey: str = "right ctrl"
+    hotkey: str = "caps lock"
     model: str = "large-v3"
     device: str = "auto"
     language: str = "auto"
-    cleanup: str = "auto"
+    cleanup: str = "fast"
+    filler_words: list = dataclasses.field(
+        default_factory=lambda: ["um", "uh", "uhm", "erm"]
+    )
+    dictionary: dict = dataclasses.field(default_factory=dict)
     ollama_model: str = "qwen3:8b"
     ollama_url: str = "http://localhost:11434"
     lmstudio_model: str = ""  # empty = first chat model LM Studio lists
     lmstudio_url: str = "http://localhost:1234"
     inject: str = "paste"
     overlay: bool = True
+    preview: bool = True           # live partial text in the overlay while speaking
+    preview_interval: float = 1.2  # seconds between preview transcription passes
 
 
 def load(path: Path = CONFIG_PATH) -> Config:

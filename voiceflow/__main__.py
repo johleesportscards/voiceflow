@@ -24,6 +24,7 @@ class App:
         self.recorder = Recorder()
         self.overlay = Overlay(self.cfg.overlay)
         self.chain = cleanup_mod.build_chain(self.cfg.cleanup, self.cfg)
+        self._preview_stop = threading.Event()
         self.tray = Tray(self.cfg.cleanup, self._set_cleanup_mode, on_quit=lambda: None)
         self.listener = HotkeyListener(
             self.cfg.hotkey,
@@ -39,8 +40,38 @@ class App:
         self.recorder.start()
         self.tray.set_state("recording")
         self.overlay.show("recording")
+        if self.cfg.preview:
+            self._preview_stop = threading.Event()
+            threading.Thread(
+                target=self._preview_loop, args=(self._preview_stop,), daemon=True
+            ).start()
+
+    def _preview_loop(self, stop: threading.Event) -> None:
+        """Live partial text while speaking: re-transcribe the growing buffer
+        with a fast greedy pass and show the tail in the overlay. If a pass
+        is slower than the interval, the next tick simply waits (single
+        flight via the transcriber's inference lock)."""
+        last_shown = ""
+        while not stop.wait(self.cfg.preview_interval):
+            if not self.recorder.recording:
+                break
+            audio = self.recorder.snapshot()
+            if audio.size < 16_000:  # wait for ≥1 s of audio
+                continue
+            try:
+                text = self.transcriber.transcribe_partial(audio)
+            except Exception:
+                log.exception("Preview transcription failed")
+                break
+            if stop.is_set() or not self.recorder.recording:
+                break
+            if text and text != last_shown:
+                last_shown = text
+                self.overlay.show("recording", text)
 
     def _on_finish(self) -> None:
+        if self.cfg.preview:
+            self._preview_stop.set()
         audio = self.recorder.stop()
         self.tray.set_state("transcribing")
         self.overlay.show("transcribing")
@@ -63,6 +94,8 @@ class App:
             self.overlay.hide()
 
     def _on_cancel(self) -> None:
+        if self.cfg.preview:
+            self._preview_stop.set()
         self.recorder.cancel()
         self.tray.set_state("idle")
         self.overlay.hide()

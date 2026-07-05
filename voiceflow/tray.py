@@ -50,10 +50,11 @@ class Tray:
             "VoiceFlow — idle",
             menu=pystray.Menu(
                 pystray.MenuItem("Cleanup", pystray.Menu(
-                    mode_item("auto", "Auto (Claude → Ollama → LM Studio → raw)"),
-                    mode_item("claude", "Claude"),
-                    mode_item("ollama", "Ollama"),
-                    mode_item("lmstudio", "LM Studio"),
+                    mode_item("fast", "Fast (instant, no LLM)"),
+                    mode_item("auto", "AI: Auto (Claude → Ollama → LM Studio)"),
+                    mode_item("claude", "AI: Claude"),
+                    mode_item("ollama", "AI: Ollama"),
+                    mode_item("lmstudio", "AI: LM Studio"),
                     mode_item("raw", "Raw transcript"),
                 )),
                 pystray.Menu.SEPARATOR,

@@ -15,12 +15,21 @@ device: auto
 language: auto
 
 # Cleanup backend for the transcript:
-#   auto     = try claude, then ollama, then lmstudio, then raw
+#   fast     = instant regex cleanup: filler words + dictionary, no LLM (default)
+#   auto     = LLM chain: try claude, then ollama, then lmstudio, then raw
 #   claude   = Claude Haiku (needs ANTHROPIC_API_KEY env var)
 #   ollama   = local model via Ollama (http://localhost:11434)
 #   lmstudio = local model via LM Studio's server (http://localhost:1234)
 #   raw      = no cleanup, inject transcript as-is
-cleanup: auto
+cleanup: fast
+
+# Used by "fast" cleanup. Words removed anywhere they appear (case-insensitive,
+# whole-word). Keep this list conservative — "like" would eat real sentences.
+filler_words: [um, uh, uhm, erm]
+
+# Used by "fast" cleanup: spoken form -> written form (case-insensitive).
+# Example: { "john lee sports cards": "JohLee Sports Cards" }
+dictionary: {}
 ollama_model: qwen3:8b
 ollama_url: http://localhost:11434
 # empty = use the first chat model LM Studio lists; small models clean fastest
@@ -33,3 +42,7 @@ inject: paste
 
 # Show a small always-on-top pill while recording
 overlay: true
+
+# Live partial transcript in the overlay while you speak (requires overlay)
+preview: true
+preview_interval: 1.2
