@@ -4,6 +4,8 @@ from __future__ import annotations
 import logging
 import threading
 
+import numpy as np
+
 from . import cleanup as cleanup_mod
 from . import config as config_mod
 from .hotkey import HotkeyListener
@@ -50,6 +52,8 @@ class App:
     # fills up, its text is committed and kept on screen while only newer
     # audio is re-transcribed — passes stay fast, nothing displayed is lost
     PREVIEW_WINDOW_SAMPLES = 15 * 16_000
+    PREVIEW_HARD_CAP_SAMPLES = 25 * 16_000  # commit even without a pause
+    PREVIEW_QUIET_RMS = 0.01   # tail RMS below this counts as a pause
     PREVIEW_KEEP_CHARS = 1000  # committed text kept for display (tail shown)
 
     def _preview_loop(self, stop: threading.Event) -> None:
@@ -79,9 +83,14 @@ class App:
                 last_shown = display
                 self.overlay.show("recording", display)
             if segment.size >= self.PREVIEW_WINDOW_SAMPLES and text:
-                # chunk is full: freeze its text, start a fresh window
-                committed = (committed + " " + text).strip()[-self.PREVIEW_KEEP_CHARS:]
-                commit_start = len(audio)
+                # chunk is full — but only commit at a pause, so the seam
+                # can't cut through a word or phrase ("oh boy" vanishing);
+                # past the hard cap, commit regardless to keep passes fast
+                tail = segment[-4800:]  # last 0.3 s
+                quiet = float(np.sqrt(np.mean(tail * tail))) < self.PREVIEW_QUIET_RMS
+                if quiet or segment.size >= self.PREVIEW_HARD_CAP_SAMPLES:
+                    committed = (committed + " " + text).strip()[-self.PREVIEW_KEEP_CHARS:]
+                    commit_start = len(audio)
 
     def _on_finish(self) -> None:
         if self.cfg.preview:

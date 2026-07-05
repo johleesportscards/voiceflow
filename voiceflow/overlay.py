@@ -90,7 +90,9 @@ class Overlay:
                 return
             x = (root.winfo_screenwidth() - w) // 2
             y = root.winfo_screenheight() - BOTTOM_MARGIN - h
-            root.geometry(f"+{x}+{y}")
+            # size AND position in one call: separate resize-then-move
+            # paints two frames and reads as flicker when a row is added
+            root.geometry(f"{w}x{h}+{x}+{y}")
             state_track["w"] = w
             state_track["h"] = h
             if not state_track["visible"]:
