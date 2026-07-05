@@ -47,24 +47,29 @@ class Overlay:
                           fg="white", bg="#333333", padx=14, pady=6)
         status.pack(side="left", anchor="s")
         # fixed width so x never shifts; height is free — rows accumulate and
-        # the window is re-anchored by its bottom edge whenever height changes
+        # the window is re-anchored by its bottom edge whenever size changes.
+        # wraplength is kept well under the label's pixel width so the last
+        # word on a row wraps instead of clipping at the edge
         preview = tk.Label(frame, text="", font=("Segoe UI", 11),
                            fg="#e8e8e8", bg="#333333", padx=0, pady=6,
-                           width=60, wraplength=520,
+                           width=62, wraplength=480,
                            justify="left", anchor="sw")
-        state_track = {"visible": False, "with_text": False, "h": 0}
+        state_track = {"visible": False, "with_text": False, "w": 0, "h": 0}
 
         def place(force: bool = False) -> None:
             """(Re)position so the pill's BOTTOM edge stays fixed; growth
-            pushes the top edge up. Only moves when the size changed."""
+            pushes the top edge up. Moves when width OR height changed —
+            width changes when the preview label first appears."""
             root.update_idletasks()
-            h = root.winfo_reqheight()
-            if not force and h == state_track["h"] and state_track["visible"]:
-                return
             w = root.winfo_reqwidth()
+            h = root.winfo_reqheight()
+            if (not force and state_track["visible"]
+                    and w == state_track["w"] and h == state_track["h"]):
+                return
             x = (root.winfo_screenwidth() - w) // 2
             y = root.winfo_screenheight() - BOTTOM_MARGIN - h
             root.geometry(f"+{x}+{y}")
+            state_track["w"] = w
             state_track["h"] = h
             if not state_track["visible"]:
                 root.deiconify()
@@ -78,6 +83,7 @@ class Overlay:
                         root.withdraw()
                         state_track["visible"] = False
                         state_track["with_text"] = False
+                        state_track["w"] = 0
                         state_track["h"] = 0
                         preview.config(text="")
                         preview.pack_forget()

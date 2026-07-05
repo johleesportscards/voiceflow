@@ -46,34 +46,42 @@ class App:
                 target=self._preview_loop, args=(self._preview_stop,), daemon=True
             ).start()
 
-    # preview transcribes only this much trailing audio — keeps each pass
-    # fast no matter how long the dictation runs (pill shows the tail anyway)
+    # each preview pass transcribes at most this much audio; once a chunk
+    # fills up, its text is committed and kept on screen while only newer
+    # audio is re-transcribed — passes stay fast, nothing displayed is lost
     PREVIEW_WINDOW_SAMPLES = 15 * 16_000
+    PREVIEW_KEEP_CHARS = 1000  # committed text kept for display (tail shown)
 
     def _preview_loop(self, stop: threading.Event) -> None:
-        """Live partial text while speaking: re-transcribe the trailing audio
-        window with a fast greedy pass and show it in the overlay. If a pass
-        is slower than the interval, the next tick simply waits (single
-        flight via the transcriber's inference lock)."""
+        """Live partial text while speaking: greedy-pass the audio since the
+        last committed chunk and show committed + current text. If a pass is
+        slower than the interval, the next tick simply waits (single flight
+        via the transcriber's inference lock)."""
+        committed = ""
+        commit_start = 0  # sample index where the uncommitted audio begins
         last_shown = ""
         while not stop.wait(self.cfg.preview_interval):
             if not self.recorder.recording:
                 break
             audio = self.recorder.snapshot()
-            if audio.size < 16_000:  # wait for ≥1 s of audio
+            segment = audio[commit_start:]
+            if segment.size < 16_000:  # wait for ≥1 s of new audio
                 continue
             try:
-                text = self.transcriber.transcribe_partial(
-                    audio[-self.PREVIEW_WINDOW_SAMPLES:]
-                )
+                text = self.transcriber.transcribe_partial(segment)
             except Exception:
                 log.exception("Preview transcription failed")
                 break
             if stop.is_set() or not self.recorder.recording:
                 break
-            if text and text != last_shown:
-                last_shown = text
-                self.overlay.show("recording", text)
+            display = (committed + " " + text).strip()
+            if display and display != last_shown:
+                last_shown = display
+                self.overlay.show("recording", display)
+            if segment.size >= self.PREVIEW_WINDOW_SAMPLES and text:
+                # chunk is full: freeze its text, start a fresh window
+                committed = (committed + " " + text).strip()[-self.PREVIEW_KEEP_CHARS:]
+                commit_start = len(audio)
 
     def _on_finish(self) -> None:
         if self.cfg.preview:
