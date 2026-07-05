@@ -1,5 +1,9 @@
 """Always-on-top overlay pill: status dot plus live partial transcript.
 
+The pill grows upward as the transcript wraps onto more rows — its bottom
+edge stays anchored near the bottom of the screen, so the newest words are
+always on the bottom row at the same spot.
+
 Runs tkinter in its own thread with a command queue, since tkinter must be
 driven from a single thread.
 """
@@ -12,7 +16,8 @@ import tkinter as tk
 COLORS = {"recording": "#e5484d", "locked": "#e5a13d", "transcribing": "#4d7ee5"}
 LABELS = {"recording": "●  recording", "locked": "●  locked on", "transcribing": "…  transcribing"}
 
-MAX_PREVIEW_CHARS = 120  # show the tail of longer dictations
+MAX_PREVIEW_CHARS = 420   # ~7 rows at 60 chars; older text scrolls off the top
+BOTTOM_MARGIN = 70        # px between the pill's bottom edge and screen bottom
 
 
 class Overlay:
@@ -40,23 +45,30 @@ class Overlay:
         frame.pack()
         status = tk.Label(frame, text="", font=("Segoe UI", 11, "bold"),
                           fg="white", bg="#333333", padx=14, pady=6)
-        status.pack(side="left")
-        # fixed 60-char x 2-line box: the pill never resizes between preview
-        # updates, so live text doesn't flicker or make the window jump
+        status.pack(side="left", anchor="s")
+        # fixed width so x never shifts; height is free — rows accumulate and
+        # the window is re-anchored by its bottom edge whenever height changes
         preview = tk.Label(frame, text="", font=("Segoe UI", 11),
                            fg="#e8e8e8", bg="#333333", padx=0, pady=6,
-                           width=60, height=2, wraplength=520,
-                           justify="left", anchor="w")
-        visible = {"shown": False, "with_text": False}
+                           width=60, wraplength=520,
+                           justify="left", anchor="sw")
+        state_track = {"visible": False, "with_text": False, "h": 0}
 
-        def place_and_show() -> None:
+        def place(force: bool = False) -> None:
+            """(Re)position so the pill's BOTTOM edge stays fixed; growth
+            pushes the top edge up. Only moves when the size changed."""
             root.update_idletasks()
+            h = root.winfo_reqheight()
+            if not force and h == state_track["h"] and state_track["visible"]:
+                return
             w = root.winfo_reqwidth()
             x = (root.winfo_screenwidth() - w) // 2
-            y = root.winfo_screenheight() - 130
+            y = root.winfo_screenheight() - BOTTOM_MARGIN - h
             root.geometry(f"+{x}+{y}")
-            root.deiconify()
-            visible["shown"] = True
+            state_track["h"] = h
+            if not state_track["visible"]:
+                root.deiconify()
+                state_track["visible"] = True
 
         def poll() -> None:
             try:
@@ -64,8 +76,9 @@ class Overlay:
                     item = self._q.get_nowait()
                     if item is None:
                         root.withdraw()
-                        visible["shown"] = False
-                        visible["with_text"] = False
+                        state_track["visible"] = False
+                        state_track["with_text"] = False
+                        state_track["h"] = 0
                         preview.config(text="")
                         preview.pack_forget()
                         continue
@@ -77,12 +90,10 @@ class Overlay:
                         if len(text) > MAX_PREVIEW_CHARS:
                             tail = "…" + tail
                         preview.config(text=tail)
-                        if not visible["with_text"]:
-                            preview.pack(side="left", padx=(0, 14))
-                            visible["with_text"] = True
-                            visible["shown"] = False  # width changed: re-center once
-                    if not visible["shown"]:
-                        place_and_show()
+                        if not state_track["with_text"]:
+                            preview.pack(side="left", padx=(0, 14), anchor="s")
+                            state_track["with_text"] = True
+                    place(force=not state_track["visible"])
             except queue.Empty:
                 pass
             root.after(50, poll)
