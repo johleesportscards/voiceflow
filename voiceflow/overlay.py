@@ -16,7 +16,7 @@ import tkinter as tk
 COLORS = {"recording": "#e5484d", "locked": "#e5a13d", "transcribing": "#4d7ee5"}
 LABELS = {"recording": "●  recording", "locked": "●  locked on", "transcribing": "…  transcribing"}
 
-MAX_PREVIEW_CHARS = 420   # ~7 rows at 60 chars; older text scrolls off the top
+MAX_PREVIEW_CHARS = 480   # a full 7 rows; older text scrolls off the top
 BOTTOM_MARGIN = 70        # px between the pill's bottom edge and screen bottom
 
 
