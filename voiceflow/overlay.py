@@ -55,44 +55,62 @@ class Overlay:
                           fg="white", bg="#333333", padx=14, pady=6)
         status.pack(side="left", anchor="s")
         preview_font = tkfont.Font(root=root, family="Segoe UI", size=11)
-        # a Text widget (not Label) so rows can be counted and trimmed as
-        # actual wrapped display lines; width in chars tracks the font, so
-        # the wrap point is the box edge at any Windows display scaling
+        wrap_px = preview_font.measure("0") * (CHARS_PER_ROW - 1)
+        # the widget never wraps or trims anything itself: lines are wrapped
+        # in code with font.measure and handed over as final content in one
+        # delete+insert — a single paint per update, no intermediate layout
+        # pass (asking the widget to wrap+count forced a mid-update repaint,
+        # which flickered on every text change)
         preview = tk.Text(frame, font=preview_font, fg="#e8e8e8", bg="#333333",
-                          width=CHARS_PER_ROW, height=1, wrap="word",
+                          width=CHARS_PER_ROW, height=1, wrap="none",
                           bd=0, highlightthickness=0, padx=0, pady=6,
                           cursor="arrow", state="disabled")
         state_track = {"visible": False, "with_text": False, "w": 0, "h": 0}
-
-        def display_rows() -> int:
-            # Tk counts display-line BOUNDARIES between the indices, so text
-            # occupying N rows returns N-1 — hence the +1. Without it the
-            # live partial row is clipped until it fills completely.
-            n = preview.count("1.0", "end-1c", "displaylines")
-            if isinstance(n, tuple):
-                n = n[0]
-            return (n or 0) + 1
-
         last_rows = {"n": 0}
         peak_rows = {"n": 0}  # session high-water mark: height never shrinks
+        last_content = {"s": None}
+
+        def wrap_lines(text: str) -> list[str]:
+            """Word-wrap with the actual font metrics (kerning included)."""
+            lines: list[str] = []
+            cur = ""
+            for word in text.split():
+                while preview_font.measure(word) > wrap_px:  # unbroken run
+                    if cur:
+                        lines.append(cur)
+                        cur = ""
+                    cut = max(1, len(word) * wrap_px // preview_font.measure(word))
+                    lines.append(word[:cut])
+                    word = word[cut:]
+                candidate = f"{cur} {word}".strip()
+                if preview_font.measure(candidate) <= wrap_px:
+                    cur = candidate
+                else:
+                    lines.append(cur)
+                    cur = word
+            if cur:
+                lines.append(cur)
+            return lines or [""]
 
         def set_preview_text(text: str) -> None:
-            preview.configure(state="normal")
-            preview.delete("1.0", "end")
-            preview.insert("1.0", text[-MAX_PREVIEW_CHARS:])
-            root.update_idletasks()
-            while display_rows() > MAX_ROWS:
-                preview.delete("1.0", "1.0+1displaylines")
-            rows = display_rows()
+            lines = wrap_lines(text[-MAX_PREVIEW_CHARS:])[-MAX_ROWS:]
+            rows = len(lines)
             # height is monotonic within a dictation: the fast pass keeps
-            # revising its wrap count (7→6→7 at the cap), and letting the
-            # pill shrink on each revision reads as constant resize flicker.
-            # Below peak, pad blank rows on top so text stays bottom-anchored.
+            # revising its wrap count (7→6→7 at the cap) and shrinking reads
+            # as resize flicker. Below peak, pad blank rows on top so the
+            # text stays bottom-anchored.
             if rows < peak_rows["n"]:
-                preview.insert("1.0", "\n" * (peak_rows["n"] - rows))
+                lines = [""] * (peak_rows["n"] - rows) + lines
                 rows = peak_rows["n"]
             else:
                 peak_rows["n"] = rows
+            content = "\n".join(lines)
+            if content == last_content["s"]:
+                return
+            last_content["s"] = content
+            preview.configure(state="normal")
+            preview.delete("1.0", "end")
+            preview.insert("1.0", content)
             if rows != last_rows["n"]:  # touching height when unchanged still
                 last_rows["n"] = rows   # triggers relayout → needless flicker
                 preview.configure(height=rows)
@@ -134,6 +152,7 @@ class Overlay:
                         state_track["h"] = 0
                         last_rows["n"] = 0
                         peak_rows["n"] = 0
+                        last_content["s"] = None
                         preview.configure(state="normal")
                         preview.delete("1.0", "end")
                         preview.configure(height=1, state="disabled")
