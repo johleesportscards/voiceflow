@@ -74,6 +74,7 @@ class Overlay:
             return (n or 0) + 1
 
         last_rows = {"n": 0}
+        peak_rows = {"n": 0}  # session high-water mark: height never shrinks
 
         def set_preview_text(text: str) -> None:
             preview.configure(state="normal")
@@ -83,6 +84,15 @@ class Overlay:
             while display_rows() > MAX_ROWS:
                 preview.delete("1.0", "1.0+1displaylines")
             rows = display_rows()
+            # height is monotonic within a dictation: the fast pass keeps
+            # revising its wrap count (7→6→7 at the cap), and letting the
+            # pill shrink on each revision reads as constant resize flicker.
+            # Below peak, pad blank rows on top so text stays bottom-anchored.
+            if rows < peak_rows["n"]:
+                preview.insert("1.0", "\n" * (peak_rows["n"] - rows))
+                rows = peak_rows["n"]
+            else:
+                peak_rows["n"] = rows
             if rows != last_rows["n"]:  # touching height when unchanged still
                 last_rows["n"] = rows   # triggers relayout → needless flicker
                 preview.configure(height=rows)
@@ -123,6 +133,7 @@ class Overlay:
                         state_track["w"] = 0
                         state_track["h"] = 0
                         last_rows["n"] = 0
+                        peak_rows["n"] = 0
                         preview.configure(state="normal")
                         preview.delete("1.0", "end")
                         preview.configure(height=1, state="disabled")
