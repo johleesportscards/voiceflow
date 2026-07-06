@@ -83,9 +83,13 @@ class Transcriber:
             # condition_on_previous_text stays off: with it on, trailing
             # silence can send Whisper into a self-reinforcing repetition
             # loop ("Bye. Bye. Bye. ...")
+            # multilingual: re-detect language per segment when language is
+            # auto — otherwise a dictation that starts in English locks the
+            # English token and mid-speech Korean comes out "translated"
             segments, _info = self.model.transcribe(
                 audio,
                 language=self.language,
+                multilingual=self.language is None,
                 vad_filter=True,
                 beam_size=beam_size,
                 condition_on_previous_text=False,
