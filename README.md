@@ -1,19 +1,47 @@
 # VoiceFlow
 
-Local Wispr Flow-style dictation for Windows. Hold a hotkey anywhere, speak,
-release — cleaned-up text appears at your cursor. Speech-to-text runs locally
-on the GPU (faster-whisper large-v3, 99 languages); optional LLM cleanup via
-Claude Haiku or a local model (Ollama or LM Studio).
+Local, free dictation for Windows — a Wispr Flow-style tool that runs
+entirely on your machine. Hold a hotkey anywhere, speak, release: your words
+appear at the cursor, with live preview text while you talk.
 
-## Run
+- **Local speech-to-text** — Whisper large-v3-turbo on your GPU (99 languages,
+  auto-detected per sentence, code-switching supported). No cloud, no
+  subscription, no audio leaving your PC.
+- **Fast** — a 20-second dictation transcribes in about a second on a
+  mid-range NVIDIA card; short phrases feel instant.
+- **Live preview** — a pill at the bottom of the screen shows your words as
+  you speak, growing up to 7 rows.
+- **Instant cleanup** — filler words (um, uh...) removed and custom
+  dictionary applied in microseconds. Optional LLM cleanup (Claude API,
+  Ollama, or LM Studio) if you want heavier rewriting.
+
+## Requirements
+
+- Windows 10/11
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) (installs
+  Python and all dependencies automatically)
+- NVIDIA GPU recommended (any CUDA-capable card). Without one it falls back
+  to CPU — works, but slower.
+- ~2 GB disk for the speech model (downloaded automatically on first run)
+
+Nothing else. No API keys, no LM Studio/Ollama, no accounts — those are
+optional extras.
+
+## Quick start
 
 ```powershell
-cd $env:USERPROFILE\Documents\Obsidian\Agent-Shared\voiceflow
+git clone https://github.com/johleesportscards/voiceflow
+cd voiceflow
 uv run voiceflow
 ```
 
-First run downloads the Whisper model (~3 GB). A green mic icon appears in the
-system tray when ready.
+First run downloads the model (~1.6 GB); wait for the green mic icon in the
+system tray. Then click into any text field, **hold Caps Lock, speak,
+release** — your words paste at the cursor.
+
+To start VoiceFlow automatically at every logon, run `install-autostart.cmd`
+once (after the first run). Uninstall by deleting `VoiceFlow.vbs` from your
+Startup folder.
 
 ## Hotkeys (default key: Caps Lock, change in config.yaml)
 
@@ -25,37 +53,43 @@ system tray when ready.
 | Single tap while locked | Stop and transcribe |
 | Esc while recording | Cancel, discard audio |
 
-With the Caps Lock hotkey, holding the key to talk never flips caps state —
-only a deliberate lone tap does.
+Holding the key to talk never flips caps state — only a deliberate lone tap
+does.
 
 ## Cleanup modes (tray menu > Cleanup, or `cleanup:` in config.yaml)
 
-- **auto** — try Claude, then Ollama, then LM Studio, then raw. Never blocks
-  dictation; any failure falls through within ~5 s.
-- **claude** — Claude Haiku. Needs `ANTHROPIC_API_KEY` set in your environment.
-- **ollama** — local model (default `qwen3:8b`) via Ollama at `localhost:11434`.
-- **lmstudio** — local model via LM Studio's OpenAI-compatible server at
-  `localhost:1234` (enable it in LM Studio > Developer > Start Server).
-  `lmstudio_model` empty = first chat model listed; prefer a small model.
-- **raw** — no cleanup, fastest.
+- **fast** (default) — instant: removes filler words, applies your custom
+  dictionary. No LLM, no waiting.
+- **auto / claude / ollama / lmstudio** — LLM cleanup: fixes grammar and
+  punctuation, heavier rewriting. Claude needs `ANTHROPIC_API_KEY` set;
+  Ollama/LM Studio need their local servers running. Adds seconds per
+  dictation.
+- **raw** — no cleanup at all.
 
 ## Config
 
-Edit `config.yaml` (hotkey, model size, language, cleanup backend, paste vs
-type injection, overlay). Restart the app to apply.
+Edit `config.yaml` and restart (tray > Quit, relaunch). Highlights:
 
-## Autostart (installed)
+- `hotkey` — any key name the `keyboard` library accepts (`f9`, `caps lock`,
+  `right ctrl`...)
+- `model` — `large-v3-turbo` (fast, recommended) or `large-v3` (max accuracy)
+- `language` — `auto`, or pin a code like `en` / `ko`
+- `filler_words` / `dictionary` — what fast cleanup removes and replaces
+- `preview` / `preview_interval` — live preview on/off and refresh rate
 
-VoiceFlow starts at logon via `shell:startup` → `VoiceFlow.vbs`
-(windowless, runs `.venv\Scripts\pythonw.exe -m voiceflow`). Delete that
-file to disable. `Start VoiceFlow.cmd` in this folder launches it manually
-with a visible console for debugging; a second launch exits immediately
-(single-instance mutex). Runtime logs: `voiceflow.log` here.
+Runtime logs: `voiceflow.log` next to the app.
 
 ## Known limitations
 
+- Windows only (global hotkey, paste injection, and launchers are all
+  Windows-specific).
 - Hotkey and paste don't reach elevated (admin) windows unless VoiceFlow
   itself runs elevated.
-- Transcription happens on key-release (1–2 s), not streamed while talking.
-- VRAM: large-v3 uses ~3 GB; Ollama qwen3:8b another ~6 GB. Fine on a 16 GB
-  card; on smaller cards set `model: distil-large-v3` or run Ollama on CPU.
+- The live preview is a fast greedy pass — it may revise words while you
+  talk. The pasted text comes from a higher-quality final pass.
+- On CPU (no NVIDIA GPU), transcription is several times slower than the
+  numbers above.
+
+## License
+
+[MIT](LICENSE)
